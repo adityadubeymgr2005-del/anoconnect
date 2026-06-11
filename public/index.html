@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ANOCONNECT · Secure File Transfer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --c1: #00e5ff;
+            --c2: #7b61ff;
+            --c3: #ff2d78;
+            --glass: rgba(8, 14, 28, 0.72);
+            --glass-border: rgba(0, 229, 255, 0.14);
+            --panel: rgba(10, 16, 34, 0.85);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #020510;
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            color: #e8f0ff;
+            overflow-x: hidden;
+        }
+        #bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.18; }
+        .orb1 { width: 700px; height: 700px; background: #00e5ff; top: -200px; left: -200px; }
+        .orb2 { width: 600px; height: 600px; background: #7b61ff; bottom: -150px; right: -100px; }
+        .orb3 { width: 400px; height: 400px; background: #ff2d78; top: 40%; left: 50%; transform: translate(-50%,-50%); opacity: 0.08; }
+        .grid-lines {
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .shell { position: relative; z-index: 2; width: 100%; max-width: 1100px; }
+        .header { text-align: center; margin-bottom: 2.5rem; }
+        .wordmark { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+        .logo-icon {
+            width: 44px; height: 44px; border-radius: 14px;
+            background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(123,97,255,0.3));
+            border: 1px solid rgba(0,229,255,0.35);
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(12px); flex-shrink: 0;
+        }
+        .logo-icon svg { width: 22px; height: 22px; }
+        .logo-text { font-size: clamp(1.3rem, 5vw, 1.75rem); font-weight: 700; letter-spacing: 3px; color: #e8f4ff; }
+        .logo-text span { color: var(--c1); }
+        .tagline { font-size: 0.78rem; letter-spacing: 2px; color: rgba(180,200,255,0.5); text-transform: uppercase; margin-bottom: 1.2rem; }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 40px;
+            background: rgba(0,229,255,0.07); border: 1px solid rgba(0,229,255,0.2);
+            font-size: 0.7rem; font-weight: 500; color: var(--c1); letter-spacing: 1px;
+        }
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--c1); box-shadow: 0 0 8px var(--c1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 700px) { .cards { grid-template-columns: 1fr; gap: 1rem; } }
+        .card {
+            border-radius: 24px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            padding: clamp(1.2rem, 4vw, 2rem);
+            position: relative; overflow: hidden;
+            transition: transform 0.3s cubic-bezier(.25,.8,.25,1), border-color 0.3s;
+        }
+        .card::before {
+            content: ''; position: absolute; inset: 0; border-radius: inherit;
+            background: radial-gradient(ellipse at 20% 10%, rgba(0,229,255,0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        @media (hover: hover) {
+            .card:hover { transform: translateY(-4px); border-color: rgba(0,229,255,0.28); }
+            .card-receive:hover { border-color: rgba(255,45,120,0.35); }
+        }
+        .card-receive::before { background: radial-gradient(ellipse at 80% 10%, rgba(255,45,120,0.06) 0%, transparent 60%); }
+        .card-line { position: absolute; top: 0; left: 10%; right: 10%; height: 1px; }
+        .line-cyan { background: linear-gradient(90deg, transparent, var(--c1), transparent); }
+        .line-pink  { background: linear-gradient(90deg, transparent, var(--c3), transparent); }
+        .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+        .card-icon { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .icon-cyan { background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.25); }
+        .icon-pink  { background: rgba(255,45,120,0.1); border: 1px solid rgba(255,45,120,0.25); }
+        .card-title { font-size: 1rem; font-weight: 600; letter-spacing: 0.5px; }
+        .title-cyan { color: #7cf0ff; }
+        .title-pink { color: #ff6fa8; }
+        .expiry-row { display: flex; gap: 8px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+        .expiry-btn {
+            flex: 1; min-width: 70px; padding: 8px 6px; border-radius: 10px;
+            border: 1px solid rgba(0,229,255,0.15); background: rgba(0,229,255,0.04);
+            color: rgba(180,210,255,0.6); font-family: 'Inter', sans-serif;
+            font-size: 0.72rem; font-weight: 500; letter-spacing: 0.5px;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .expiry-btn.active { background: rgba(0,229,255,0.12); border-color: rgba(0,229,255,0.45); color: var(--c1); }
+        .expiry-btn:hover:not(.active) { border-color: rgba(0,229,255,0.28); color: rgba(200,230,255,0.8); }
+        .expiry-time-row { display: none; align-items: center; gap: 10px; margin-bottom: 1.2rem; }
+        .expiry-time-row.visible { display: flex; }
+        .expiry-time-row input[type=range] {
+            flex: 1; height: 3px; border-radius: 2px;
+            appearance: none; -webkit-appearance: none;
+            background: rgba(0,229,255,0.15); outline: none; cursor: pointer;
+        }
+        .expiry-time-row input[type=range]::-webkit-slider-thumb {
+            appearance: none; -webkit-appearance: none;
+            width: 14px; height: 14px; border-radius: 50%;
+            background: var(--c1); box-shadow: 0 0 6px var(--c1);
+        }
+        .expiry-time-label { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--c1); white-space: nowrap; min-width: 52px; text-align: right; }
+        .dropzone {
+            border: 1.5px dashed rgba(0,229,255,0.25); border-radius: 16px;
+            padding: clamp(1.5rem, 5vw, 2.2rem) 1.2rem;
+            text-align: center; cursor: pointer; transition: all 0.25s;
+            background: rgba(0,229,255,0.03);
+        }
+        .dropzone:hover, .dropzone.drag-over { border-color: rgba(0,229,255,0.6); background: rgba(0,229,255,0.07); }
+        .dropzone.drag-over { transform: scale(1.015); }
+        .drop-graphic {
+            width: 52px; height: 52px; margin: 0 auto 0.9rem; border-radius: 14px;
+            background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .drop-graphic svg { width: 26px; height: 26px; stroke: var(--c1); }
+        .drop-label { font-size: 0.88rem; font-weight: 500; color: rgba(200,220,255,0.85); }
+        .drop-sub   { font-size: 0.7rem; margin-top: 4px; color: rgba(140,170,220,0.5); letter-spacing: 0.5px; }
+        .progress-wrap { margin-top: 1.2rem; display: none; }
+        .progress-track { height: 3px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--c1), var(--c2)); transition: width 0.2s ease; border-radius: 3px; }
+        .progress-label { font-size: 0.7rem; margin-top: 6px; color: rgba(150,180,220,0.6); letter-spacing: 1px; text-align: right; }
+        .code-reveal {
+            margin-top: 1.4rem; border-radius: 16px;
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.2);
+            padding: 1.2rem; text-align: center; display: none;
+        }
+        .reveal-label { font-size: 0.65rem; letter-spacing: 2px; color: rgba(0,229,255,0.6); text-transform: uppercase; margin-bottom: 0.5rem; }
+        .code-display {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(1rem, 4vw, 1.35rem); font-weight: 700; color: #00e5ff;
+            background: rgba(0,229,255,0.06); border: 1px solid rgba(0,229,255,0.15);
+            border-radius: 10px; padding: 0.5rem 0.8rem;
+            word-break: break-all; margin-bottom: 0.8rem; letter-spacing: 2px;
+        }
+        .copy-btn {
+            background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.25);
+            color: var(--c1); padding: 5px 18px; border-radius: 30px;
+            font-size: 0.7rem; font-family: 'Inter', sans-serif; font-weight: 500;
+            letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+        }
+        .copy-btn:hover { background: rgba(0,229,255,0.18); }
+        .countdown-wrap {
+            margin-top: 0.9rem; padding: 0.7rem 1rem; border-radius: 10px;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(0,229,255,0.1); display: none;
+        }
+        .countdown-wrap.visible { display: block; }
+        .countdown-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .countdown-label { font-size: 0.62rem; letter-spacing: 1.5px; color: rgba(0,229,255,0.5); text-transform: uppercase; }
+        .countdown-value { font-family: 'Space Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--c1); }
+        .countdown-value.warning { color: #ffb340; }
+        .countdown-value.critical { color: var(--c3); animation: pulse 1s ease-in-out infinite; }
+        .expire-note { font-size: 0.62rem; margin-top: 5px; color: rgba(120,160,200,0.45); letter-spacing: 0.5px; text-align: center; }
+        .field-label { font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,100,160,0.7); margin-bottom: 8px; }
+        .code-row {
+            display: flex; align-items: center;
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(255,45,120,0.22);
+            border-radius: 14px; padding: 0 16px; margin-bottom: 1.2rem; transition: border-color 0.2s;
+        }
+        .code-row:focus-within { border-color: rgba(255,45,120,0.55); }
+        .code-prefix-tag {
+            font-family: 'Space Mono', monospace; font-size: 0.75rem; font-weight: 700;
+            color: rgba(255,100,160,0.6); white-space: nowrap;
+            padding: 14px 8px 14px 0; border-right: 1px solid rgba(255,45,120,0.15); margin-right: 12px;
+        }
+        .code-field {
+            background: transparent; border: none; outline: none; color: #ff6fa8;
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(0.85rem, 3vw, 1rem); font-weight: 700;
+            padding: 14px 0; width: 100%; letter-spacing: 3px;
+        }
+        .code-field::placeholder { color: rgba(255,100,160,0.2); font-weight: 400; letter-spacing: 1px; }
+        .action-btn {
+            width: 100%; padding: 14px; border-radius: 14px; border: none;
+            font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600;
+            letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+            transition: all 0.2s cubic-bezier(.25,.8,.25,1); position: relative; overflow: hidden;
+        }
+        .btn-pink {
+            background: linear-gradient(135deg, rgba(255,45,120,0.85), rgba(200,20,90,0.9));
+            color: #fff; box-shadow: 0 4px 20px rgba(255,45,120,0.25);
+        }
+        .btn-pink:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,45,120,0.38); }
+        .btn-pink:active { transform: scale(0.98); }
+        .btn-pink::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent); border-radius: inherit;
+        }
+        .dl-result {
+            margin-top: 1.2rem; border-radius: 14px;
+            background: rgba(255,45,120,0.06); border: 1px solid rgba(255,45,120,0.2);
+            padding: 1rem 1.2rem; display: none;
+        }
+        .dl-result.visible { display: block; }
+        .dl-result-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .dl-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 70px; }
+        .dl-stat-value { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; color: #ff6fa8; }
+        .dl-stat-label { font-size: 0.6rem; letter-spacing: 1.5px; color: rgba(255,100,160,0.5); text-transform: uppercase; }
+        .dl-divider { width: 1px; height: 36px; background: rgba(255,45,120,0.15); flex-shrink: 0; }
+        .error-msg { font-size: 0.75rem; color: #ff8fa8; margin-top: 0.8rem; text-align: center; display: none; letter-spacing: 0.5px; }
+        .sep { display: flex; align-items: center; gap: 12px; margin: 1.4rem 0; }
+        .sep-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+        .sep-dot  { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+        footer {
+            text-align: center; margin-top: 2rem;
+            font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase;
+            color: rgba(100,130,180,0.35);
+            display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;
+        }
+        .footer-badge { display: inline-flex; align-items: center; gap: 5px; }
+        .footer-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(0,229,255,0.3); }
+        @media (max-width: 480px) {
+            body { padding: 1.2rem 1rem; }
+            .header { margin-bottom: 1.5rem; }
+            .tagline { font-size: 0.68rem; letter-spacing: 1px; }
+            .expiry-btn { font-size: 0.68rem; padding: 7px 4px; }
+            .action-btn { padding: 13px; font-size: 0.8rem; }
+            footer { gap: 0.7rem; font-size: 0.62rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="bg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="grid-lines"></div>
+</div>
+
+<div class="shell">
+    <div class="header">
+        <div class="wordmark">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6L12 2z"
+                          stroke="#00e5ff" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+                    <path d="M9 12l2 2 4-4" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="logo-text">ANO<span>CONNECT</span></div>
+        </div>
+        <div class="tagline">anonymous encrypted file transfer</div>
+        <div class="status-pill">
+            <span class="status-dot"></span>
+            <span id="connectionStatus">establishing link</span>
+        </div>
+    </div>
+
+    <div class="cards">
+        <!-- SEND -->
+        <div class="card card-send">
+            <div class="card-line line-cyan"></div>
+            <div class="card-head">
+                <div class="card-icon icon-cyan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="card-title title-cyan">Transmit</div>
+            </div>
+
+            <div class="expiry-row">
+                <button class="expiry-btn active" data-mode="download">After download</button>
+                <button class="expiry-btn" data-mode="time">Timed</button>
+            </div>
+            <div class="expiry-time-row" id="expiryTimeRow">
+                <input type="range" id="expirySlider" min="10" max="1440" step="10" value="60">
+                <span class="expiry-time-label" id="expiryTimeLabel">60 min</span>
+            </div>
+
+            <div class="dropzone" id="dropZone">
+                <div class="drop-graphic">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <polyline points="9 15 12 12 15 15"/>
+                    </svg>
+                </div>
+                <div class="drop-label">Drop file here</div>
+                <div class="drop-sub">or tap to browse</div>
+                <input type="file" id="fileInput" style="display:none">
+            </div>
+
+            <div class="progress-wrap" id="uploadProgress">
+                <div class="progress-track"><div class="progress-fill" id="uploadFill"></div></div>
+                <div class="progress-label" id="uploadText">encrypting…</div>
+            </div>
+
+            <div class="code-reveal" id="uploadSuccess">
+                <div class="reveal-label">mission code</div>
+                <div class="code-display" id="spyCodeDisplay">—</div>
+                <button class="copy-btn" id="copyCodeBtn">copy code</button>
+                <div class="countdown-wrap" id="countdownWrap">
+                    <div class="countdown-row">
+                        <span class="countdown-label">expires in</span>
+                        <span class="countdown-value" id="countdownValue">—</span>
+                    </div>
+                </div>
+                <div class="expire-note" id="expireNote"></div>
+            </div>
+        </div>
+
+        <!-- RECEIVE -->
+        <div class="card card-receive">
+            <div class="card-line line-pink"></div>
+            <div class="card-head">
+                <div class="card-icon icon-pink">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff2d78" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </div>
+                <div class="card-title title-pink">Intercept</div>
+            </div>
+
+            <div class="field-label">enter mission code</div>
+            <div class="code-row">
+                <span class="code-prefix-tag" id="codePrefixDisplay">AGENT-</span>
+                <input type="text" id="spyCodeInput" placeholder="7X9D2KW" maxlength="7"
+                    class="code-field" autocomplete="off" spellcheck="false" inputmode="text">
+            </div>
+
+            <button class="action-btn btn-pink" id="downloadBtn">Decrypt &amp; Download</button>
+
+            <div class="progress-wrap" id="downloadProgress">
+                <div class="progress-track">
+                    <div class="progress-fill" id="downloadFill" style="background: linear-gradient(90deg, #ff2d78, #c2185b);"></div>
+                </div>
+                <div class="progress-label" id="downloadText">locating package…</div>
+            </div>
+
+            <div class="dl-result" id="dlResult">
+                <div class="dl-result-row">
+                    <div class="dl-stat">
+                        <span class="dl-stat-value" id="dlCount">—</span>
+                        <span class="dl-stat-label">Downloads</span>
+                    </div>
+                    <div class="dl-divider"></div>
+                    <div class="dl-stat">
+                        <span class="dl-stat-value" id="dlSize">—</span>
+                        <span class="dl-stat-label">File size</span>
+                    </div>
+                    <div class="dl-divider"></div>
+                    <div class="dl-stat">
+                        <span class="dl-stat-value" id="dlMode">—</span>
+                        <span class="dl-stat-label">Expiry</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="error-msg" id="errorMessage"></div>
+
+            <div class="sep"><div class="sep-line"></div><div class="sep-dot"></div><div class="sep-line"></div></div>
+            <p style="font-size:0.72rem; color: rgba(150,170,210,0.35); text-align:center; letter-spacing:0.5px; line-height:1.6;">
+                Your decryption key never leaves this device.<br>End-to-end AES-256-GCM encryption.
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        <span class="footer-badge">AES-256-GCM</span>
+        <span class="footer-badge">PBKDF2 </span>
+        <span class="footer-badge">anonymous</span>
+    </footer>
+</div>
+
+<script>
+    const CODE_NAMES = ['VORTEX','PHANTOM','SPECTRE','NEXUS','ECHO','GHOST','CYPHER','SHADOW','RAZOR','QUANTUM'];
+    const dropZone         = document.getElementById('dropZone');
+    const fileInput        = document.getElementById('fileInput');
+    const uploadProgress   = document.getElementById('uploadProgress');
+    const uploadFill       = document.getElementById('uploadFill');
+    const uploadText       = document.getElementById('uploadText');
+    const uploadSuccess    = document.getElementById('uploadSuccess');
+    const spyCodeDisplay   = document.getElementById('spyCodeDisplay');
+    const copyCodeBtn      = document.getElementById('copyCodeBtn');
+    const spyCodeInput     = document.getElementById('spyCodeInput');
+    const downloadBtn      = document.getElementById('downloadBtn');
+    const downloadProgress = document.getElementById('downloadProgress');
+    const downloadFill     = document.getElementById('downloadFill');
+    const downloadText     = document.getElementById('downloadText');
+    const errorMessage     = document.getElementById('errorMessage');
+    const codePrefixDisplay= document.getElementById('codePrefixDisplay');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const countdownWrap    = document.getElementById('countdownWrap');
+    const countdownValue   = document.getElementById('countdownValue');
+    const expireNote       = document.getElementById('expireNote');
+    const dlResult         = document.getElementById('dlResult');
+    const dlCount          = document.getElementById('dlCount');
+    const dlSize           = document.getElementById('dlSize');
+    const dlMode           = document.getElementById('dlMode');
+    const expiryTimeRow    = document.getElementById('expiryTimeRow');
+    const expirySlider     = document.getElementById('expirySlider');
+    const expiryTimeLabel  = document.getElementById('expiryTimeLabel');
+
+    let currentSpyCodeFull = '';
+    let currentExpiryMode  = 'download';
+    let currentExpiresAt   = null;
+    let countdownTimer     = null;
+
+    document.querySelectorAll('.expiry-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.expiry-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentExpiryMode = btn.dataset.mode;
+            expiryTimeRow.classList.toggle('visible', currentExpiryMode === 'time');
+        });
+    });
+
+    expirySlider.addEventListener('input', () => {
+        const v = parseInt(expirySlider.value);
+        expiryTimeLabel.textContent = v >= 60 ? `${v/60|0}h ${v%60 ? (v%60)+'m' : ''}`.trim() : `${v} min`;
+    });
+
+    function generateSpyKey(){ const c='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789'; let o=''; for(let i=0;i<7;i++) o+=c[Math.floor(Math.random()*c.length)]; return o; }
+    function generateCodename(){ return CODE_NAMES[Math.floor(Math.random()*CODE_NAMES.length)]; }
+    function showError(msg){ errorMessage.innerText=msg; errorMessage.style.display='block'; setTimeout(()=>errorMessage.style.display='none',5000); }
+    function formatBytes(b){ if(b<1024) return b+'B'; if(b<1048576) return (b/1024).toFixed(1)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+
+    async function sha256(m){ const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m)); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+    async function deriveKey(code,salt){ const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(code),'PBKDF2',false,['deriveKey']); return await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},true,['encrypt','decrypt']); }
+    async function encryptFile(file,key){ const data=await file.arrayBuffer(); const iv=crypto.getRandomValues(new Uint8Array(12)); const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,data); const combined=new Uint8Array(iv.length+enc.byteLength); combined.set(iv); combined.set(new Uint8Array(enc),iv.length); return combined.buffer; }
+    async function decryptFile(buf,key){ const iv=buf.slice(0,12); const data=buf.slice(12); return await crypto.subtle.decrypt({name:'AES-GCM',iv},key,data); }
+
+    function startCountdown(expiresAt) {
+        if(countdownTimer) clearInterval(countdownTimer);
+        countdownWrap.classList.add('visible');
+        function tick() {
+            const remaining = expiresAt - Date.now();
+            if(remaining <= 0) {
+                countdownValue.textContent = 'EXPIRED';
+                countdownValue.className = 'countdown-value critical';
+                clearInterval(countdownTimer);
+                return;
+            }
+            const h = Math.floor(remaining / 3600000);
+            const m = Math.floor((remaining % 3600000) / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            countdownValue.textContent = h > 0
+                ? `${h}h ${String(m).padStart(2,'0')}m`
+                : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            countdownValue.className = 'countdown-value' +
+                (remaining < 300000 ? ' critical' : remaining < 1800000 ? ' warning' : '');
+        }
+        tick();
+        countdownTimer = setInterval(tick, 1000);
+    }
+
+    async function checkServer(){
+        try{
+            const res=await fetch('/api/health');
+            connectionStatus.innerHTML = res.ok ? 'Tunnel Active' : 'server offline';
+        }catch(e){ connectionStatus.innerHTML='unreachable'; }
+    }
+    setInterval(checkServer,5000); checkServer();
+
+    async function uploadFile(file){
+        if(!file) return;
+        uploadProgress.style.display='block';
+        uploadSuccess.style.display='none';
+        countdownWrap.classList.remove('visible');
+        uploadFill.style.width='0%';
+        uploadText.innerText='generating mission code…';
+        try{
+            const spyKey=generateSpyKey();
+            const codename=generateCodename();
+            currentSpyCodeFull=`${codename}-${spyKey}`;
+            const salt=crypto.getRandomValues(new Uint8Array(16));
+            uploadText.innerText='deriving key…';
+            const key=await deriveKey(spyKey,salt);
+            uploadText.innerText='encrypting (AES-GCM)…';
+            const encryptedData=await encryptFile(file,key);
+            const codeHash=await sha256(spyKey);
+            uploadText.innerText='uploading…';
+            const fd=new FormData();
+            fd.append('file',new Blob([encryptedData]),'encrypted.bin');
+            fd.append('fileName',file.name);
+            fd.append('fileSize',file.size.toString());
+            fd.append('mimeType',file.type||'application/octet-stream');
+            fd.append('codeHash',codeHash);
+            fd.append('salt',btoa(String.fromCharCode(...salt)));
+            fd.append('expiryMode', currentExpiryMode);
+            fd.append('expiryMinutes', expirySlider.value);
+            let prog=0;
+            const interval=setInterval(()=>{ prog=Math.min(92,prog+4); uploadFill.style.width=`${prog}%`; uploadText.innerText=`uploading ${prog}%`; },200);
+            const resp=await fetch('/api/upload',{method:'POST',body:fd});
+            clearInterval(interval);
+            let data;
+            if(resp.headers.get('content-type')?.includes('application/json')) data=await resp.json();
+            else throw new Error('server returned non-json (backend offline?)');
+            if(!resp.ok) throw new Error(data.error||'upload failed');
+            uploadFill.style.width='100%';
+            uploadText.innerText='transmission complete';
+            if(currentExpiryMode === 'time') {
+                currentExpiresAt = Date.now() + parseInt(expirySlider.value) * 60 * 1000;
+            } else {
+                currentExpiresAt = null;
+            }
+            setTimeout(()=>{
+                uploadProgress.style.display='none';
+                uploadSuccess.style.display='block';
+                spyCodeDisplay.innerText=currentSpyCodeFull;
+                if(currentExpiryMode === 'time' && currentExpiresAt) {
+                    startCountdown(currentExpiresAt);
+                    expireNote.textContent = '';
+                } else {
+                    countdownWrap.classList.remove('visible');
+                    expireNote.textContent = 'expires after first download';
+                }
+            },400);
+        }catch(err){
+            showError(`transmission failed: ${err.message}`);
+            uploadProgress.style.display='none';
+        }
+    }
+
+    async function downloadAndDecrypt(){
+        let inp=spyCodeInput.value.trim().toUpperCase();
+        if(!inp){ showError('enter mission code'); return; }
+        let spyKey=inp.includes('-')?inp.split('-')[1]:inp;
+        if(!/^[A-Z0-9]{7}$/.test(spyKey)){ showError('invalid format — needs 7 alphanumeric characters'); return; }
+        const codeHash=await sha256(spyKey);
+        downloadProgress.style.display='block';
+        dlResult.classList.remove('visible');
+        downloadFill.style.width='0%';
+        downloadText.innerText='locating package…';
+        errorMessage.style.display='none';
+        try{
+            const resp=await fetch(`/api/download/${codeHash}`);
+            let data;
+            if(resp.headers.get('content-type')?.includes('application/json')) data=await resp.json();
+            else throw new Error('server returned non-json');
+            if(!resp.ok) throw new Error(data.error||'download failed');
+            downloadText.innerText='decrypting…';
+            downloadFill.style.width='35%';
+            const salt=new Uint8Array(atob(data.salt).split('').map(c=>c.charCodeAt(0)));
+            const key=await deriveKey(spyKey,salt);
+            downloadText.innerText='decrypting data…';
+            downloadFill.style.width='65%';
+            const encBuf=Uint8Array.from(atob(data.encryptedData),c=>c.charCodeAt(0));
+            const decrypted=await decryptFile(encBuf,key);
+            downloadFill.style.width='100%';
+            downloadText.innerText='package secured ✓';
+            const blob=new Blob([decrypted],{type:data.mimeType});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');
+            a.href=url; a.download=data.fileName;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+            dlCount.textContent = data.downloadCount ?? '1';
+            dlSize.textContent  = formatBytes(data.fileSize || 0);
+            dlMode.textContent  = data.expiryMode === 'download' ? '1×' : data.expiryMode;
+            dlResult.classList.add('visible');
+            setTimeout(()=>downloadProgress.style.display='none',1200);
+        }catch(err){
+            showError(`interception failed: ${err.message}`);
+            downloadProgress.style.display='none';
+        }
+    }
+
+    dropZone.addEventListener('dragover',(e)=>{ e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',(e)=>{ e.preventDefault(); dropZone.classList.remove('drag-over'); if(e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+    dropZone.addEventListener('click',()=>fileInput.click());
+    fileInput.addEventListener('change',(e)=>{ if(e.target.files.length) uploadFile(e.target.files[0]); });
+    spyCodeInput.addEventListener('input',(e)=>{
+        const val=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+        e.target.value=val;
+        codePrefixDisplay.innerText = val.length===7 ? `${generateCodename()}-` : 'AGENT-';
+    });
+    downloadBtn.addEventListener('click',downloadAndDecrypt);
+    spyCodeInput.addEventListener('keypress',(e)=>{ if(e.key==='Enter') downloadAndDecrypt(); });
+    copyCodeBtn.addEventListener('click',async()=>{
+        if(currentSpyCodeFull){
+            await navigator.clipboard.writeText(currentSpyCodeFull);
+            copyCodeBtn.innerText='copied ✓';
+            setTimeout(()=>copyCodeBtn.innerText='copy code',2000);
+        }
+    });
+    codePrefixDisplay.innerText=`${CODE_NAMES[0]}-`;
+</script>
+</body>
+</html>
